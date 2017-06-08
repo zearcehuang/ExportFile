@@ -57,6 +57,7 @@ namespace export_sybase
                 Stopwatch watch = new Stopwatch();
                 watch.Start();
                 AseDataReader dr = cmd.ExecuteReader();
+                int intCount = 0;
 
                 if (dr.HasRows)
                 {
@@ -68,9 +69,6 @@ namespace export_sybase
 
                     intCloumn = chkColumn.Checked ? 0 : 1;
 
-                    //StreamWriter SaveFile = new StreamWriter(
-                    //   new FileStream(txtPath.Text.Trim(), FileMode.Open, FileAccess.ReadWrite),
-                    //   Encoding.UTF8);
                     string strFileName = txtPath.Text.Trim() + "export.txt";
                     while (new FileInfo(strFileName).Exists)
                     {
@@ -83,29 +81,45 @@ namespace export_sybase
 
                     StringBuilder strTemp = new StringBuilder();
 
+                    if (intCloumn == 0) //欄位
+                    {
+                        strTemp.Length = 0;
+                        for (int i = 0; i < dr.FieldCount; i++)
+                        {
+                            strTemp.Append(dr.GetName(i) + txtTerminator.Text.Trim());
+                        }
+
+                        SaveFile.WriteLine(strTemp.ToString().Trim());
+                        intCloumn = 1;
+                    }
+
+                    strTemp.Length = 0;
                     while (dr.Read())
                     {
-                        if (intCloumn == 0) //欄位
-                        {
-                            strTemp.Length = 0;
-                            for (int i = 0; i < dr.FieldCount; i++)
-                            {
-                                strTemp.Append(dr.GetName(i) + txtTerminator.Text.Trim());
-                            }
-
-                            SaveFile.WriteLine(strTemp.ToString().Trim());
-                            intCloumn = 1;
-                        }
                         //明細
-                        strTemp.Length = 0;
                         for (int i = 0; i < dr.FieldCount; i++)
                         {
                             strTemp.Append(dr[i] == System.DBNull.Value
                                     ? ""
-                                    : dr[i].ToString().Trim() + txtTerminator.Text.Trim() + txtTerminator.Text.Trim());
+                                    : dr[i].ToString().Trim() + txtTerminator.Text.Trim());
                         }
-                        SaveFile.WriteLine(strTemp.ToString().Trim());
+
+                        intCount += 1;
+                        strTemp.AppendLine("");
+
+                        if (intCount >= 100000)      //多筆寫一次
+                        {
+                            SaveFile.WriteLine(strTemp.ToString().Trim());
+                            intCount = 0;
+                            strTemp.Length = 0;
+                        }
+
+                        //SaveFile.WriteLine(strTemp.ToString().Trim());
                     }
+
+                    if (strTemp.Length > 0)
+                        SaveFile.WriteLine(strTemp.ToString().Trim());
+
                     SaveFile.Close();
                     SaveFile.Dispose();
                 }
