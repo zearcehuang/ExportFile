@@ -11,6 +11,8 @@ namespace export_sybase
 {
     public partial class Form1 : Form
     {
+        readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         public Form1()
         {
             InitializeComponent();
@@ -49,6 +51,7 @@ namespace export_sybase
 
             try
             {
+                log.Info("匯出開始");
                 cmd.CommandText = txtSQL.Text.Trim();
                 cmd.CommandTimeout = 60;
                 cmd.Connection = conn;
@@ -89,7 +92,8 @@ namespace export_sybase
                             strTemp.Append(dr.GetName(i) + txtTerminator.Text.Trim());
                         }
 
-                        SaveFile.WriteLine(strTemp.ToString().Trim());
+                        //SaveFile.WriteLine(strTemp.ToString().Trim());
+                        SaveFile.WriteLine(strTemp.Length > 0 ? strTemp.ToString(0, strTemp.Length - txtTerminator.Text.Trim().Length) : "");
                         intCloumn = 1;
                     }
 
@@ -99,22 +103,29 @@ namespace export_sybase
                         //明細
                         for (int i = 0; i < dr.FieldCount; i++)
                         {
-                            strTemp.Append(dr[i] == System.DBNull.Value
-                                    ? ""
-                                    : dr[i].ToString().Trim() + txtTerminator.Text.Trim());
+                            if (i == dr.FieldCount - 1)
+                            {
+                                strTemp.Append(dr[i] == System.DBNull.Value
+                                    ? "" : dr[i].ToString().Trim());
+                            }
+                            else
+                            {
+                                strTemp.Append(dr[i] == System.DBNull.Value
+                                        ? ""
+                                        : dr[i].ToString().Trim() + txtTerminator.Text.Trim());
+                            }
                         }
 
                         intCount += 1;
                         strTemp.AppendLine("");
 
-                        if (intCount >= 100000)      //多筆寫一次
+                        if (intCount >= 50000)      //多筆寫一次
                         {
                             SaveFile.WriteLine(strTemp.ToString().Trim());
                             intCount = 0;
                             strTemp.Length = 0;
                         }
 
-                        //SaveFile.WriteLine(strTemp.ToString().Trim());
                     }
 
                     if (strTemp.Length > 0)
@@ -122,6 +133,7 @@ namespace export_sybase
 
                     SaveFile.Close();
                     SaveFile.Dispose();
+                    SaveFile = null;
                 }
 
                 dr.Close();
@@ -130,6 +142,7 @@ namespace export_sybase
 
                 MessageBox.Show("匯出完成，共花費" + watch.ElapsedMilliseconds.ToString() + "毫秒", "訊息", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 watch = null;
+                dr = null;
             }
             catch (AseException ase)
             {
@@ -147,6 +160,7 @@ namespace export_sybase
                 }
                 cmd.Dispose();
                 cmd = null;
+                log.Info("匯出結束");
             }
         }
     }
